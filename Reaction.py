@@ -9,6 +9,8 @@ running = True
 mutex = Lock()
 
 class Game:
+    '''Class to run most of the system functions'''
+    
     def __init__(object):
         def kill():
             global running
@@ -29,8 +31,12 @@ class Game:
 
         object.sprites = []
         object.playing = True
+        object.current = 0
+        object.to_change = 1
 
     def redraw(object):
+        '''Redraws the screen so that things aren't hidden'''
+        
         global running
         if running == True:
             object.tk.update()
@@ -38,24 +44,41 @@ class Game:
             object.tk.update_idletasks()
 
     def add_sprite(object, sprite):
+        '''Adds the sprite "sprite" to the list of sprites to animate'''
+        
         object.sprites.append(sprite)
 
+    def set_color(object):
+        object.sprites[object.current].set_color()
+
     def mainloop(object):
-        def blink_sprite():
-            # print('good')
-            for sprite in object.sprites:
-                global mutex
-                if mutex.acquire(blocking=False):
-                    try:
-                        if object.playing:
-                            sprite.blink()
+        '''Runs the main loop that animates the sprites
+in the list of sprites that were added by
+"add_sprite"'''
+        
+        def blink_sprite():  
+            # for sprite in object.sprites:
+            global mutex
+            if mutex.acquire(blocking=False):
+                try:
+                    if object.playing:
+                        object.sprites[object.current].blink()
+                        
+                        object.current += object.to_change
+                        if object.current == 4 and \
+                           object.to_change == 1:
+                            object.to_change = -1
 
-                    finally:
-                        mutex.release()
+                        elif object.current == 0 and \
+                             object.to_change == -1:
+                            object.to_change = 1
 
-            object.timer = object.tk.after(500, blink_sprite)
+                finally:
+                    mutex.release()
 
-        object.timer = object.tk.after(500, blink_sprite)
+            object.timer = object.tk.after(100, blink_sprite)
+
+        object.timer = object.tk.after(100, blink_sprite)
             
         object.tk.mainloop()
         # global running
@@ -71,6 +94,8 @@ class Game:
         #             mutex.release()
         
 class Light:
+    '''Class for the lights on the screen'''
+    
     def __init__(object, color, coords, game):
         object.position = coords.split('@')
         object.canvas = game.canvas
@@ -81,17 +106,28 @@ class Light:
 
         object.game.redraw()
 
+    def set_color(object):
+        object.canvas.itemconfig(object.id, fill=object.color)
+        object.game.redraw()
+
     def blink(object):
+        '''Turns the light on and off; "blinking"'''
+        
         global running
         if running == True:
             object.canvas.itemconfig(object.id, fill=object.color)
             object.game.redraw()
-        sleep(0.1)
+            
+        if running == True:
+            sleep(0.1)
+            
         if running == True:
             object.canvas.itemconfig(object.id, fill='#bcbcbc')
             object.game.redraw()
 
 class ControlButtons:
+    '''Class to show the buttons controlling the lights'''
+    
     def __init__(object, color, text_color, text, coords, command, game):
         object.game = game
         object.position = coords.split('@')
@@ -109,22 +145,16 @@ right_center = Light('#ffee00', '150@120', g)
 right        = Light('#ff0000', '180@120', g)
 
 def stop_lights():
-    global mutex
-    if mutex.acquire(blocking=False):
-        try:
-            g.playing = False
-
-        finally:
-            mutex.release()
+    '''Stops the light from running back and forth'''
+    
+    g.playing = False
+    g.set_color()
 
 def start_lights():
-    global mutex
-    if mutex.acquire(blocking=False):
-        try:
-            g.playing = True
-
-        finally:
-            mutex.release()
+    '''Starts the light running back and forth that was stopped by 
+the function stop_lights()'''
+    
+    g.playing = True
             
 stop = ControlButtons('#ff0000', '#0000ff', 'Stop', '90@170', stop_lights, g)
 start = ControlButtons('#00ff00', '#ffffff', 'Start', '130@170', start_lights, g)
